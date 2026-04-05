@@ -29,6 +29,7 @@ function initDb(db: Database.Database) {
       hourly_rate INTEGER NOT NULL DEFAULT 1000,
       transport_fee INTEGER NOT NULL DEFAULT 0,
       role TEXT NOT NULL DEFAULT 'staff' CHECK(role IN ('staff', 'owner')),
+      position TEXT NOT NULL DEFAULT '' CHECK(position IN ('', 'hall', 'kitchen')),
       active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
     );

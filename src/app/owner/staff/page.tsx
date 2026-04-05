@@ -12,15 +12,22 @@ interface Staff {
   hourly_rate: number;
   transport_fee: number;
   role: string;
+  position: string;
   active: number;
 }
+
+const POSITION_LABELS: Record<string, { text: string; color: string }> = {
+  hall: { text: 'ホール', color: 'bg-blue-100 text-blue-700' },
+  kitchen: { text: 'キッチン', color: 'bg-green-100 text-green-700' },
+  '': { text: '未設定', color: 'bg-gray-100 text-gray-500' },
+};
 
 export default function OwnerStaffPage() {
   const { session } = useSession('owner');
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Staff | null>(null);
-  const [form, setForm] = useState({ name: '', pin: '', hourly_rate: 1000, transport_fee: 0 });
+  const [form, setForm] = useState({ name: '', pin: '', hourly_rate: 1000, transport_fee: 0, position: '' });
   const [error, setError] = useState('');
   const router = useRouter();
 
@@ -53,7 +60,7 @@ export default function OwnerStaffPage() {
       setError(data.error);
       return;
     }
-    setForm({ name: '', pin: '', hourly_rate: 1000, transport_fee: 0 });
+    setForm({ name: '', pin: '', hourly_rate: 1000, transport_fee: 0, position: '' });
     setShowForm(false);
     fetchStaff();
   };
@@ -141,6 +148,28 @@ export default function OwnerStaffPage() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">役職</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'hall', label: 'ホール', icon: '🍽' },
+                    { value: 'kitchen', label: 'キッチン', icon: '🔪' },
+                  ].map(p => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setForm({ ...form, position: form.position === p.value ? '' : p.value })}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
+                        form.position === p.value
+                          ? p.value === 'hall' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-green-500 bg-green-50 text-green-700'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                      }`}
+                    >
+                      {p.icon} {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
               <button
                 onClick={handleAdd}
@@ -197,6 +226,24 @@ export default function OwnerStaffPage() {
                         />
                       </div>
                     </div>
+                    <div>
+                      <label className="text-xs text-gray-500">役職</label>
+                      <div className="flex gap-2 mt-1">
+                        {[
+                          { value: 'hall', label: '🍽 ホール' },
+                          { value: 'kitchen', label: '🔪 キッチン' },
+                        ].map(p => (
+                          <button key={p.value} type="button"
+                            onClick={() => setEditing({ ...editing, position: editing.position === p.value ? '' : p.value })}
+                            className={`px-3 py-1 rounded text-xs font-medium border-2 ${
+                              editing.position === p.value
+                                ? p.value === 'hall' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-green-500 bg-green-50 text-green-700'
+                                : 'border-gray-200 text-gray-400'
+                            }`}
+                          >{p.label}</button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="flex gap-2">
                       <button onClick={handleUpdate} className="px-3 py-1 bg-green-500 text-white rounded text-sm">保存</button>
                       <button onClick={() => setEditing(null)} className="px-3 py-1 bg-gray-300 rounded text-sm">キャンセル</button>
@@ -206,6 +253,11 @@ export default function OwnerStaffPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="font-medium">{s.name}</span>
+                      {s.position && (
+                        <span className={`ml-2 px-1.5 py-0.5 rounded text-xs font-medium ${POSITION_LABELS[s.position]?.color || ''}`}>
+                          {POSITION_LABELS[s.position]?.text || s.position}
+                        </span>
+                      )}
                       <span className="text-gray-400 ml-2 text-sm">PIN: {s.pin}</span>
                       <span className="text-gray-500 ml-3 text-sm">{s.hourly_rate.toLocaleString()}円/h</span>
                       {s.transport_fee > 0 && (

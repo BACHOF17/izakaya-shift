@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const staffId = searchParams.get('staff_id');
 
   let query = `
-    SELECT sh.*, s.name as staff_name, s.hourly_rate
+    SELECT sh.*, s.name as staff_name, s.hourly_rate, s.position as staff_position
     FROM shifts sh
     JOIN staff s ON sh.staff_id = s.id
     WHERE 1=1
