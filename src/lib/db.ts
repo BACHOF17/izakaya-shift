@@ -93,11 +93,18 @@ function initDb(db: Database.Database) {
       staff_id INTEGER NOT NULL,
       shift_id INTEGER,
       type TEXT NOT NULL CHECK(type IN ('in', 'out')),
+      confirmed INTEGER NOT NULL DEFAULT 0,
       punched_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
       FOREIGN KEY (staff_id) REFERENCES staff(id),
       FOREIGN KEY (shift_id) REFERENCES shifts(id)
     );
   `);
+
+  // マイグレーション: punch_records に confirmed カラムを追加
+  const punchCols = db.prepare("PRAGMA table_info(punch_records)").all() as { name: string }[];
+  if (!punchCols.some(c => c.name === 'confirmed')) {
+    db.exec("ALTER TABLE punch_records ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 0");
+  }
 
   // デフォルトオーナーアカウント（初回のみ）
   const ownerExists = db.prepare("SELECT id FROM staff WHERE role = 'owner' LIMIT 1").get();
