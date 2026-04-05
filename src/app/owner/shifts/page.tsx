@@ -95,6 +95,17 @@ export default function OwnerShiftsPage() {
     fetchData();
   };
 
+  const handleBulkReject = async () => {
+    const pendingIds = requests.filter(r => r.status === 'pending').map(r => r.id);
+    if (pendingIds.length === 0) return;
+    if (!confirm(`${pendingIds.length}件の希望を一括却下しますか？`)) return;
+    await fetch('/api/shift-requests', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: pendingIds, status: 'rejected' }),
+    });
+    fetchData();
+  };
+
   const handleSaveShift = async () => {
     if (!editingShift) return;
     await fetch('/api/shifts', {
@@ -397,10 +408,16 @@ export default function OwnerShiftsPage() {
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-orange-600">未承認のシフト希望</h3>
-                  <button onClick={handleBulkApprove}
-                    className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">
-                    全て承認
-                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={handleBulkApprove}
+                      className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">
+                      全て承認
+                    </button>
+                    <button onClick={handleBulkReject}
+                      className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">
+                      全て却下
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {pendingRequests.map(r => (
