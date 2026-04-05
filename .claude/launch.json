@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "izakaya-shift-dev",
+      "runtimeExecutable": "/Users/momokazu/.nvm/versions/node/v24.14.1/bin/npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "cwd": "/Users/momokazu/izakaya-shift"
+    }
+  ]
+}
