@@ -91,6 +91,7 @@ export default function ShiftRequestPage() {
 
     setSuccess(`${submitted}件提出しました${skipped > 0 ? `（${skipped}件スキップ）` : ''}`);
     setSelectedDates(new Set());
+    setCheckedDows(new Set());
     setNote('');
     setSubmitting(false);
     fetchRequests();
@@ -122,17 +123,54 @@ export default function ShiftRequestPage() {
     return days;
   };
 
-  // 曜日一括選択
-  const selectByDayOfWeek = (dow: number[]) => {
+  // 曜日トグル選択
+  const [checkedDows, setCheckedDows] = useState<Set<number>>(new Set());
+
+  const toggleDayOfWeek = (dow: number) => {
     const today = new Date().toISOString().split('T')[0];
     const requestedDates = new Set(requests.map(r => r.date));
     const days = generateDays();
-    const newSet = new Set(selectedDates);
+    const isChecked = checkedDows.has(dow);
+
+    const newChecked = new Set(checkedDows);
+    const newSelected = new Set(selectedDates);
+
+    if (isChecked) {
+      // チェック解除 → 該当曜日の日付を解除
+      newChecked.delete(dow);
+      for (const d of days) {
+        if (new Date(d).getDay() === dow) newSelected.delete(d);
+      }
+    } else {
+      // チェック → 該当曜日の日付を追加
+      newChecked.add(dow);
+      for (const d of days) {
+        if (d <= today || requestedDates.has(d)) continue;
+        if (new Date(d).getDay() === dow) newSelected.add(d);
+      }
+    }
+
+    setCheckedDows(newChecked);
+    setSelectedDates(newSelected);
+  };
+
+  // 全選択/全解除
+  const selectAll = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const requestedDates = new Set(requests.map(r => r.date));
+    const days = generateDays();
+    const newSet = new Set<string>();
     for (const d of days) {
       if (d <= today || requestedDates.has(d)) continue;
-      if (dow.includes(new Date(d).getDay())) newSet.add(d);
+      newSet.add(d);
     }
     setSelectedDates(newSet);
+    setCheckedDows(new Set([0, 1, 2, 3, 4, 5, 6]));
+  };
+
+  const deselectAll = () => {
+    setSelectedDates(new Set());
+    setCheckedDows(new Set());
   };
 
   const days = generateDays();
@@ -151,7 +189,7 @@ export default function ShiftRequestPage() {
         <div className="bg-white rounded-xl shadow-sm p-5">
           <label className="block text-sm text-gray-600 mb-1">月を選択</label>
           <input type="month" value={selectedMonth}
-            onChange={e => { setSelectedMonth(e.target.value); setSelectedDates(new Set()); }}
+            onChange={e => { setSelectedMonth(e.target.value); setSelectedDates(new Set()); setCheckedDows(new Set()); }}
             className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500" />
         </div>
 
@@ -161,20 +199,40 @@ export default function ShiftRequestPage() {
             <label className="text-sm font-medium text-gray-700">
               日付をタップで選択 <span className="text-orange-600">({selectedDates.size}日)</span>
             </label>
-            <button onClick={() => setSelectedDates(new Set())}
+            <button onClick={() => { setSelectedDates(new Set()); setCheckedDows(new Set()); }}
               className="text-xs text-gray-400 hover:text-red-500">クリア</button>
           </div>
 
-          {/* 曜日ショートカット */}
-          <div className="flex gap-1 mb-3 overflow-x-auto">
-            <button onClick={() => selectByDayOfWeek([1,2,3,4,5])}
-              className="px-2 py-1 bg-gray-100 rounded text-[10px] text-gray-600 hover:bg-gray-200 whitespace-nowrap">平日全部</button>
-            <button onClick={() => selectByDayOfWeek([0,6])}
-              className="px-2 py-1 bg-gray-100 rounded text-[10px] text-gray-600 hover:bg-gray-200 whitespace-nowrap">土日</button>
-            <button onClick={() => selectByDayOfWeek([5,6])}
-              className="px-2 py-1 bg-gray-100 rounded text-[10px] text-gray-600 hover:bg-gray-200 whitespace-nowrap">金土</button>
-            <button onClick={() => selectByDayOfWeek([0,1,2,3,4,5,6])}
-              className="px-2 py-1 bg-gray-100 rounded text-[10px] text-gray-600 hover:bg-gray-200 whitespace-nowrap">全日</button>
+          {/* 曜日チェックボックス一括選択 */}
+          <div className="mb-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-orange-700">曜日でまとめて選択</span>
+              <div className="flex gap-2">
+                <button onClick={selectAll}
+                  className="px-2 py-0.5 bg-orange-100 rounded text-[10px] text-orange-600 hover:bg-orange-200 font-medium">全選択</button>
+                <button onClick={deselectAll}
+                  className="px-2 py-0.5 bg-gray-100 rounded text-[10px] text-gray-500 hover:bg-gray-200 font-medium">全解除</button>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {DAY_LABELS.map((label, dow) => (
+                <button key={`dow-${dow}`}
+                  onClick={() => toggleDayOfWeek(dow)}
+                  className={`flex flex-col items-center py-2 rounded-lg text-xs font-medium transition-all border ${
+                    checkedDows.has(dow)
+                      ? 'bg-orange-500 text-white border-orange-500'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300'
+                  }`}
+                >
+                  <span className={`w-4 h-4 mb-0.5 rounded border flex items-center justify-center text-[10px] ${
+                    checkedDows.has(dow) ? 'bg-white text-orange-500 border-white' : 'border-gray-300'
+                  }`}>
+                    {checkedDows.has(dow) && '✓'}
+                  </span>
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-7 gap-1">
@@ -194,7 +252,7 @@ export default function ShiftRequestPage() {
                 <button key={d}
                   onClick={() => !isPast && !isRequested && toggleDate(d)}
                   disabled={isPast || isRequested}
-                  className={`py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`relative py-2.5 rounded-lg text-sm font-medium transition-all ${
                     isSelected ? 'bg-orange-500 text-white ring-2 ring-orange-300'
                     : isRequested ? 'bg-green-100 text-green-600'
                     : isPast ? 'text-gray-300'
@@ -202,6 +260,7 @@ export default function ShiftRequestPage() {
                   } ${!isPast && !isRequested && dow === 0 ? 'text-red-500' : ''} ${!isPast && !isRequested && dow === 6 ? 'text-blue-500' : ''}`}
                 >
                   {dayNum}
+                  {isSelected && <span className="absolute top-0.5 right-0.5 text-[8px]">✓</span>}
                 </button>
               );
             })}
