@@ -94,6 +94,18 @@ export default function OwnerDashboard() {
             </div>
           )}
         </div>
+
+        {/* クイックリンク */}
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={() => router.push('/owner/auto-schedule')}
+            className="bg-white rounded-xl shadow-sm p-4 text-center hover:shadow-md text-sm">
+            🤖 自動シフト調整
+          </button>
+          <button onClick={() => router.push('/owner/settings')}
+            className="bg-white rounded-xl shadow-sm p-4 text-center hover:shadow-md text-sm">
+            ⚙️ 店舗設定
+          </button>
+        </div>
       </div>
     </div>
   );

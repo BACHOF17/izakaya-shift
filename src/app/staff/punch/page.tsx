@@ -128,6 +128,11 @@ export default function PunchPage() {
             最終打刻: {lastAction.type === 'in' ? '出勤' : '退勤'} {lastAction.time}
           </p>
         )}
+
+        <a href="/staff/punch-history"
+          className="mt-6 px-6 py-2 bg-white text-gray-600 rounded-lg text-sm shadow-sm hover:bg-gray-50">
+          📋 打刻履歴を見る
+        </a>
       </div>
     </div>
   );

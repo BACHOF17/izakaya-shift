@@ -20,7 +20,7 @@ const staffLinks = [
 const ownerLinks = [
   { href: '/owner', label: 'ホーム', icon: '🏠' },
   { href: '/owner/shifts', label: 'シフト', icon: '📅' },
-  { href: '/owner/auto-schedule', label: '自動調整', icon: '🤖' },
+  { href: '/owner/punch-history', label: '打刻', icon: '⏱' },
   { href: '/owner/staff', label: 'スタッフ', icon: '👥' },
   { href: '/owner/salary', label: '給料', icon: '💰' },
 ];
