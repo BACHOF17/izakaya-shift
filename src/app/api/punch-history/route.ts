@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: '未認証' }, { status: 401 });
 
-  const db = getDb();
+  const db = await getDb();
   const { searchParams } = new URL(req.url);
   const month = searchParams.get('month');
   const staffId = searchParams.get('staff_id');
@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
   }
 
   query += ' ORDER BY pr.punched_at DESC LIMIT 200';
-  const records = db.prepare(query).all(...params);
+  const result = await db.execute({ sql: query, args: params });
+  const records = result.rows;
 
   // ペアにまとめる（出勤→退勤）
   const paired: {
@@ -45,26 +46,26 @@ export async function GET(req: NextRequest) {
   }[] = [];
 
   const byStaffDate: Record<string, { ins: string[]; outs: string[] }> = {};
-  for (const r of records as { staff_id: number; staff_name: string; type: string; punched_at: string }[]) {
-    const date = r.punched_at.split(' ')[0];
+  for (const r of records as unknown as { staff_id: number; staff_name: string; type: string; punched_at: string }[]) {
+    const date = String(r.punched_at).split(' ')[0];
     const key = `${r.staff_id}-${date}`;
     if (!byStaffDate[key]) byStaffDate[key] = { ins: [], outs: [] };
-    if (r.type === 'in') byStaffDate[key].ins.push(r.punched_at);
-    else byStaffDate[key].outs.push(r.punched_at);
+    if (r.type === 'in') byStaffDate[key].ins.push(String(r.punched_at));
+    else byStaffDate[key].outs.push(String(r.punched_at));
   }
 
-  for (const r of records as { staff_id: number; staff_name: string; type: string; punched_at: string }[]) {
-    const date = r.punched_at.split(' ')[0];
+  for (const r of records as unknown as { staff_id: number; staff_name: string; type: string; punched_at: string }[]) {
+    const date = String(r.punched_at).split(' ')[0];
     const key = `${r.staff_id}-${date}`;
     if (byStaffDate[key]) {
       paired.push({
-        staff_id: r.staff_id,
-        staff_name: r.staff_name,
+        staff_id: Number(r.staff_id),
+        staff_name: String(r.staff_name),
         date,
         clock_in: byStaffDate[key].ins[0] || null,
         clock_out: byStaffDate[key].outs[0] || null,
       });
-      delete byStaffDate[key]; // 1日1エントリ
+      delete byStaffDate[key];
     }
   }
 

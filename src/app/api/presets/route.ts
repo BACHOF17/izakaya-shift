@@ -10,10 +10,10 @@ const DEFAULT_PRESETS = [
 ];
 
 export async function GET() {
-  const db = getDb();
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'time_presets'").get() as { value: string } | undefined;
-  if (row) {
-    return NextResponse.json(JSON.parse(row.value));
+  const db = await getDb();
+  const result = await db.execute("SELECT value FROM settings WHERE key = 'time_presets'");
+  if (result.rows.length > 0) {
+    return NextResponse.json(JSON.parse(String(result.rows[0].value)));
   }
   return NextResponse.json(DEFAULT_PRESETS);
 }
@@ -24,7 +24,10 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: '権限がありません' }, { status: 403 });
   }
   const { presets } = await req.json();
-  const db = getDb();
-  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('time_presets', ?)").run(JSON.stringify(presets));
+  const db = await getDb();
+  await db.execute({
+    sql: "INSERT OR REPLACE INTO settings (key, value) VALUES ('time_presets', ?)",
+    args: [JSON.stringify(presets)],
+  });
   return NextResponse.json({ ok: true });
 }

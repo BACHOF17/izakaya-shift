@@ -3,11 +3,11 @@ import { getDb } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 
 export interface SalarySettings {
-  lateNightStart: string;   // 深夜帯開始 (例: "22:00")
-  lateNightEnd: string;     // 深夜帯終了 (例: "05:00")
-  lateNightRate: number;    // 深夜手当倍率 (例: 1.25 = 25%増)
-  overtimeThreshold: number; // 残業開始時間（分） (例: 480 = 8時間)
-  overtimeRate: number;     // 残業手当倍率 (例: 1.25 = 25%増)
+  lateNightStart: string;
+  lateNightEnd: string;
+  lateNightRate: number;
+  overtimeThreshold: number;
+  overtimeRate: number;
 }
 
 const DEFAULT_SETTINGS: SalarySettings = {
@@ -18,17 +18,17 @@ const DEFAULT_SETTINGS: SalarySettings = {
   overtimeRate: 1.25,
 };
 
-export function getSalarySettings(): SalarySettings {
-  const db = getDb();
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'salary_settings'").get() as { value: string } | undefined;
-  if (row) {
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(row.value) };
+export async function getSalarySettings(): Promise<SalarySettings> {
+  const db = await getDb();
+  const result = await db.execute("SELECT value FROM settings WHERE key = 'salary_settings'");
+  if (result.rows.length > 0) {
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(String(result.rows[0].value)) };
   }
   return DEFAULT_SETTINGS;
 }
 
 export async function GET() {
-  return NextResponse.json(getSalarySettings());
+  return NextResponse.json(await getSalarySettings());
 }
 
 export async function PUT(req: NextRequest) {
@@ -37,7 +37,10 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: '権限がありません' }, { status: 403 });
   }
   const settings = await req.json();
-  const db = getDb();
-  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('salary_settings', ?)").run(JSON.stringify(settings));
+  const db = await getDb();
+  await db.execute({
+    sql: "INSERT OR REPLACE INTO settings (key, value) VALUES ('salary_settings', ?)",
+    args: [JSON.stringify(settings)],
+  });
   return NextResponse.json({ ok: true });
 }

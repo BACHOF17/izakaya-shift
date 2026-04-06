@@ -14,9 +14,14 @@ export async function getSession(): Promise<SessionUser | null> {
 
   try {
     const data = JSON.parse(Buffer.from(session.value, 'base64').toString());
-    const db = getDb();
-    const user = db.prepare('SELECT id, name, role FROM staff WHERE id = ? AND active = 1').get(data.id) as SessionUser | undefined;
-    return user || null;
+    const db = await getDb();
+    const result = await db.execute({
+      sql: 'SELECT id, name, role FROM staff WHERE id = ? AND active = 1',
+      args: [data.id],
+    });
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return { id: Number(row.id), name: String(row.name), role: String(row.role) as 'staff' | 'owner' };
   } catch {
     return null;
   }

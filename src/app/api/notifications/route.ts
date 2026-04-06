@@ -1,21 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import type { Client } from '@libsql/client';
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: '未認証' }, { status: 401 });
 
-  const db = getDb();
-  const notifications = db.prepare(`
-    SELECT * FROM notifications WHERE staff_id = ? ORDER BY created_at DESC LIMIT 50
-  `).all(session.id);
+  const db = await getDb();
+  const notifResult = await db.execute({
+    sql: 'SELECT * FROM notifications WHERE staff_id = ? ORDER BY created_at DESC LIMIT 50',
+    args: [session.id],
+  });
 
-  const unreadCount = db.prepare(
-    'SELECT COUNT(*) as count FROM notifications WHERE staff_id = ? AND read = 0'
-  ).get(session.id) as { count: number };
+  const countResult = await db.execute({
+    sql: 'SELECT COUNT(*) as count FROM notifications WHERE staff_id = ? AND read = 0',
+    args: [session.id],
+  });
 
-  return NextResponse.json({ notifications, unreadCount: unreadCount.count });
+  return NextResponse.json({
+    notifications: notifResult.rows,
+    unreadCount: Number(countResult.rows[0].count),
+  });
 }
 
 export async function PUT(req: NextRequest) {
@@ -23,20 +29,21 @@ export async function PUT(req: NextRequest) {
   if (!session) return NextResponse.json({ error: '未認証' }, { status: 401 });
 
   const { id, readAll } = await req.json();
-  const db = getDb();
+  const db = await getDb();
 
   if (readAll) {
-    db.prepare('UPDATE notifications SET read = 1 WHERE staff_id = ?').run(session.id);
+    await db.execute({ sql: 'UPDATE notifications SET read = 1 WHERE staff_id = ?', args: [session.id] });
   } else if (id) {
-    db.prepare('UPDATE notifications SET read = 1 WHERE id = ? AND staff_id = ?').run(id, session.id);
+    await db.execute({ sql: 'UPDATE notifications SET read = 1 WHERE id = ? AND staff_id = ?', args: [id, session.id] });
   }
 
   return NextResponse.json({ ok: true });
 }
 
 // 通知送信ヘルパー（他APIから呼ばれる）
-export function sendNotification(db: ReturnType<typeof getDb>, staffId: number, type: string, title: string, message: string) {
-  db.prepare(
-    'INSERT INTO notifications (staff_id, type, title, message) VALUES (?, ?, ?, ?)'
-  ).run(staffId, type, title, message);
+export async function sendNotification(db: Client, staffId: number, type: string, title: string, message: string) {
+  await db.execute({
+    sql: 'INSERT INTO notifications (staff_id, type, title, message) VALUES (?, ?, ?, ?)',
+    args: [staffId, type, title, message],
+  });
 }
