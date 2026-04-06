@@ -30,19 +30,34 @@ export interface SalaryDetail {
   shifts: ShiftDetail[];
 }
 
-const LATE_NIGHT_START = 22 * 60; // 22:00
-const LATE_NIGHT_END = 5 * 60;    // 05:00
-const OVERTIME_THRESHOLD = 8 * 60; // 8時間超で残業
+// デフォルト値（APIから設定を渡せる）
+let LATE_NIGHT_START = 22 * 60;
+let LATE_NIGHT_END = 5 * 60;
+let OVERTIME_THRESHOLD = 8 * 60;
+let LATE_NIGHT_RATE = 1.25;
+let OVERTIME_RATE = 1.25;
+
+export interface SalaryConfig {
+  lateNightStart?: string;
+  lateNightEnd?: string;
+  lateNightRate?: number;
+  overtimeThreshold?: number;
+  overtimeRate?: number;
+}
+
+export function applySalaryConfig(config: SalaryConfig) {
+  if (config.lateNightStart) LATE_NIGHT_START = timeToMinutes(config.lateNightStart);
+  if (config.lateNightEnd) LATE_NIGHT_END = timeToMinutes(config.lateNightEnd);
+  if (config.lateNightRate) LATE_NIGHT_RATE = config.lateNightRate;
+  if (config.overtimeThreshold) OVERTIME_THRESHOLD = config.overtimeThreshold;
+  if (config.overtimeRate) OVERTIME_RATE = config.overtimeRate;
+}
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
 }
 
-/**
- * 指定の時間帯のうち深夜帯（22:00-翌5:00）に含まれる分数を計算
- * 日跨ぎ（例: 17:00-翌2:00）にも対応
- */
 function calcLateNightMinutes(startMin: number, endMin: number): number {
   let lateNight = 0;
 
@@ -123,8 +138,8 @@ export function calculateSalary(
     const rate = staff.hourly_rate;
     const shiftPay = Math.floor(
       (normalMin * rate / 60) +
-      (lateNightMin * rate * 1.25 / 60) +
-      (overtimeMin * rate * 1.25 / 60)
+      (lateNightMin * rate * LATE_NIGHT_RATE / 60) +
+      (overtimeMin * rate * OVERTIME_RATE / 60)
     );
 
     totalMinutes += worked;
@@ -149,8 +164,8 @@ export function calculateSalary(
 
   const rate = staff.hourly_rate;
   const basePay = Math.floor(totalNormalMin * rate / 60);
-  const lateNightPay = Math.floor(totalLateNightMin * rate * 1.25 / 60);
-  const overtimePay = Math.floor(totalOvertimeMin * rate * 1.25 / 60);
+  const lateNightPay = Math.floor(totalLateNightMin * rate * LATE_NIGHT_RATE / 60);
+  const overtimePay = Math.floor(totalOvertimeMin * rate * OVERTIME_RATE / 60);
   const totalTransport = staff.transport_fee * workDays;
   const totalPay = basePay + lateNightPay + overtimePay + totalTransport;
 

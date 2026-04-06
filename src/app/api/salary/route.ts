@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { calculateSalary } from '@/lib/salary';
+import { calculateSalary, applySalaryConfig } from '@/lib/salary';
+import { getSalarySettings } from '@/app/api/salary-settings/route';
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: '未認証' }, { status: 401 });
+
+  // 給料設定を適用
+  const salarySettings = getSalarySettings();
+  applySalaryConfig(salarySettings);
 
   const { searchParams } = new URL(req.url);
   const month = searchParams.get('month'); // YYYY-MM
