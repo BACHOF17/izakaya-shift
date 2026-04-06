@@ -49,11 +49,19 @@ export default function OwnerShiftsPage() {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addStaffId, setAddStaffId] = useState('');
+  const [addStart, setAddStart] = useState('17:00');
+  const [addEnd, setAddEnd] = useState('23:00');
+  const [staffList, setStaffList] = useState<{ id: number; name: string }[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     const now = new Date();
     setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    fetch('/api/staff').then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setStaffList(data.filter((s: { role: string; active: number }) => s.role === 'staff' && s.active)); })
+      .catch(() => {});
   }, []);
 
   const fetchData = useCallback(() => {
@@ -87,11 +95,35 @@ export default function OwnerShiftsPage() {
   const handleBulkApprove = async () => {
     const pendingIds = requests.filter(r => r.status === 'pending').map(r => r.id);
     if (pendingIds.length === 0) return;
-    if (!confirm(`${pendingIds.length}件の希望を一括承認しますか？`)) return;
+    if (!confirm(`本当に${pendingIds.length}件のシフト希望を全て承認してもいいですか？`)) return;
+    if (!confirm(`最終確認：${pendingIds.length}件を承認します。よろしいですか？`)) return;
     await fetch('/api/shift-requests', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: pendingIds, status: 'approved' }),
     });
+    fetchData();
+  };
+
+  const handleBulkReject = async () => {
+    const pendingIds = requests.filter(r => r.status === 'pending').map(r => r.id);
+    if (pendingIds.length === 0) return;
+    if (!confirm(`本当に${pendingIds.length}件のシフト希望を全て却下してもいいですか？`)) return;
+    if (!confirm(`最終確認：${pendingIds.length}件を却下します。この操作は取り消せません。本当によろしいですか？`)) return;
+    await fetch('/api/shift-requests', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: pendingIds, status: 'rejected' }),
+    });
+    fetchData();
+  };
+
+  const handleAddShift = async () => {
+    if (!selectedDate || !addStaffId) return;
+    await fetch('/api/shifts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staff_id: Number(addStaffId), date: selectedDate, start_time: addStart, end_time: addEnd }),
+    });
+    setShowAddForm(false);
+    setAddStaffId('');
     fetchData();
   };
 
@@ -359,6 +391,45 @@ export default function OwnerShiftsPage() {
                         ))}
                       </div>
                     )}
+
+                    {/* シフト追加ボタン */}
+                    {!showAddForm ? (
+                      <button onClick={() => setShowAddForm(true)}
+                        className="w-full mt-3 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-400 hover:border-orange-400 hover:text-orange-500 transition-colors">
+                        + シフトを追加
+                      </button>
+                    ) : (
+                      <div className="mt-3 p-3 bg-orange-50 rounded-lg space-y-2">
+                        <div>
+                          <label className="text-xs text-gray-600">スタッフ</label>
+                          <select value={addStaffId} onChange={e => setAddStaffId(e.target.value)}
+                            className="w-full px-2 py-1.5 border rounded text-sm focus:outline-none focus:border-orange-500">
+                            <option value="">選択してください</option>
+                            {staffList.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-gray-600">開始</label>
+                            <input type="time" value={addStart} onChange={e => setAddStart(e.target.value)}
+                              className="w-full px-2 py-1.5 border rounded text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-600">終了</label>
+                            <input type="time" value={addEnd} onChange={e => setAddEnd(e.target.value)}
+                              className="w-full px-2 py-1.5 border rounded text-sm" />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={handleAddShift} disabled={!addStaffId}
+                            className="px-4 py-1.5 bg-orange-500 text-white rounded text-sm disabled:opacity-50">追加</button>
+                          <button onClick={() => setShowAddForm(false)}
+                            className="px-4 py-1.5 bg-gray-200 rounded text-sm">キャンセル</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
@@ -403,10 +474,16 @@ export default function OwnerShiftsPage() {
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-orange-600">未承認のシフト希望</h3>
-                  <button onClick={handleBulkApprove}
-                    className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">
-                    全て承認
-                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={handleBulkApprove}
+                      className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">
+                      全て承認
+                    </button>
+                    <button onClick={handleBulkReject}
+                      className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600">
+                      全て却下
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {pendingRequests.map(r => (

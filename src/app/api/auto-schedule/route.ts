@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const month = searchParams.get('month');
   const maxStaff = parseInt(searchParams.get('max_staff') || '99');
+  const datesParam = searchParams.get('dates'); // カンマ区切りの日付
+  const targetDates = datesParam ? new Set(datesParam.split(',')) : null;
 
   if (!month) return NextResponse.json({ error: '月を指定してください' }, { status: 400 });
 
@@ -65,6 +67,8 @@ export async function GET(req: NextRequest) {
   // 日付ごとにグループ化
   const dateRequests: Record<string, ShiftRequest[]> = {};
   for (const r of requests) {
+    // 対象日フィルター
+    if (targetDates && !targetDates.has(r.date)) continue;
     // 既に確定シフトがあるスタッフ×日をスキップ
     if (existingSet.has(`${r.date}-${r.staff_id}`)) continue;
     if (!dateRequests[r.date]) dateRequests[r.date] = [];

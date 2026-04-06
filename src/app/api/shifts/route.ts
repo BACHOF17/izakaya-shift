@@ -37,6 +37,27 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(shifts);
 }
 
+export async function POST(req: NextRequest) {
+  const session = await getSession();
+  if (!session || session.role !== 'owner') {
+    return NextResponse.json({ error: '権限がありません' }, { status: 403 });
+  }
+  const { staff_id, date, start_time, end_time } = await req.json();
+  if (!staff_id || !date || !start_time || !end_time) {
+    return NextResponse.json({ error: '必須項目が不足しています' }, { status: 400 });
+  }
+  const db = getDb();
+  // 重複チェック
+  const existing = db.prepare('SELECT id FROM shifts WHERE staff_id = ? AND date = ? LIMIT 1').get(staff_id, date);
+  if (existing) {
+    return NextResponse.json({ error: 'この日のシフトは既にあります' }, { status: 400 });
+  }
+  const result = db.prepare(
+    'INSERT INTO shifts (staff_id, date, start_time, end_time) VALUES (?, ?, ?, ?)'
+  ).run(staff_id, date, start_time, end_time);
+  return NextResponse.json({ id: result.lastInsertRowid });
+}
+
 export async function PUT(req: NextRequest) {
   const session = await getSession();
   if (!session || session.role !== 'owner') {

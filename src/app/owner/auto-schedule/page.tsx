@@ -38,11 +38,12 @@ export default function AutoSchedulePage() {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [minStaff, setMinStaff] = useState(1);
   const [maxStaff, setMaxStaff] = useState(5);
+  const [targetDates, setTargetDates] = useState<Set<string>>(new Set()); // 対象日
+  const [dateMode, setDateMode] = useState<'all' | 'pick'>('all');
   const [result, setResult] = useState<ScheduleResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState('');
-  // 除外するリクエストID
   const [excludedIds, setExcludedIds] = useState<Set<number>>(new Set());
   const router = useRouter();
 
@@ -51,14 +52,29 @@ export default function AutoSchedulePage() {
     setSelectedMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
   }, []);
 
+  const generateDays = () => {
+    if (!selectedMonth) return [];
+    const [y, m] = selectedMonth.split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const days: string[] = [];
+    for (let d = 1; d <= daysInMonth; d++) days.push(`${selectedMonth}-${String(d).padStart(2, '0')}`);
+    return days;
+  };
+
+  const toggleTargetDate = (d: string) => {
+    setTargetDates(prev => { const n = new Set(prev); if (n.has(d)) n.delete(d); else n.add(d); return n; });
+  };
+
   const handlePreview = async () => {
     setLoading(true);
     setMessage('');
     setExcludedIds(new Set());
     try {
-      const res = await fetch(
-        `/api/auto-schedule?month=${selectedMonth}&min_staff=${minStaff}&max_staff=${maxStaff}`
-      );
+      let url = `/api/auto-schedule?month=${selectedMonth}&max_staff=${maxStaff}`;
+      if (dateMode === 'pick' && targetDates.size > 0) {
+        url += `&dates=${[...targetDates].sort().join(',')}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       setResult(data);
     } catch {
@@ -160,6 +176,44 @@ export default function AutoSchedulePage() {
               onChange={e => setSelectedMonth(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-orange-500"
             />
+          </div>
+
+          {/* 対象日モード */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">対象日</label>
+            <div className="flex gap-2 mb-2">
+              <button onClick={() => { setDateMode('all'); setTargetDates(new Set()); }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium ${dateMode === 'all' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                月全体
+              </button>
+              <button onClick={() => setDateMode('pick')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium ${dateMode === 'pick' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                日を選ぶ {dateMode === 'pick' && targetDates.size > 0 && `(${targetDates.size}日)`}
+              </button>
+            </div>
+            {dateMode === 'pick' && (
+              <div className="border rounded-lg p-3">
+                <div className="grid grid-cols-7 gap-1">
+                  {DAY_LABELS.map((d, i) => (
+                    <div key={d} className={`text-center text-xs py-0.5 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'}`}>{d}</div>
+                  ))}
+                  {(() => { const days = generateDays(); if (!days.length) return null; const blanks = new Date(days[0]).getDay(); return Array.from({length: blanks}, (_, i) => <div key={`b${i}`}/>); })()}
+                  {generateDays().map(d => {
+                    const dayNum = parseInt(d.split('-')[2]);
+                    const isSelected = targetDates.has(d);
+                    const dow = new Date(d).getDay();
+                    return (
+                      <button key={d} onClick={() => toggleTargetDate(d)}
+                        className={`py-2 rounded text-sm font-medium transition-all ${
+                          isSelected ? 'bg-blue-500 text-white' : 'hover:bg-gray-100 text-gray-700'
+                        } ${dow === 0 ? 'text-red-500' : ''} ${dow === 6 ? 'text-blue-500' : ''}`}>
+                        {dayNum}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
