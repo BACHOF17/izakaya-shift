@@ -161,7 +161,7 @@ export default function OwnerShiftsPage() {
         </div>
 
         {/* タブ */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setTab('confirmed')}
             className={`px-4 py-2 rounded-lg text-sm font-medium ${
@@ -179,6 +179,12 @@ export default function OwnerShiftsPage() {
             シフト希望 {pendingRequests.length > 0 && (
               <span className="ml-1 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-xs">{pendingRequests.length}</span>
             )}
+          </button>
+          <button
+            onClick={() => router.push('/owner/auto-schedule')}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600"
+          >
+            🤖 自動調整
           </button>
         </div>
 

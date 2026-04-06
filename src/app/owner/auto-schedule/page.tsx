@@ -106,7 +106,8 @@ export default function AutoSchedulePage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(`${data.count}件のシフトを確定しました！`);
+        const msg = `${data.created}件のシフトを確定しました！${data.skipped > 0 ? `（${data.skipped}件は重複のためスキップ）` : ''}`;
+        setMessage(msg);
         setResult(null);
       }
     } catch {
@@ -197,7 +198,13 @@ export default function AutoSchedulePage() {
           <div className={`p-4 rounded-xl text-sm font-medium ${
             message.includes('エラー') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
           }`}>
-            {message}
+            <p>{message}</p>
+            {!message.includes('エラー') && !result && (
+              <button onClick={() => router.push('/owner/shifts')}
+                className="mt-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600">
+                📅 シフト管理を見る
+              </button>
+            )}
           </div>
         )}
 
